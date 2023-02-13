@@ -16,4 +16,4 @@ This is the arduino code for the Fitsophone, a musical instument controlled by l
 2. Unzip the folder and keep the files inside the `frits` folder.
 3. Install [Teensyduino](https://www.pjrc.com/teensy/td_download.html).
 4. Open `frits/frits.ino` in Teensyduino.
-5. Adjust and upload the the Teensy.
+5. Adjust code and upload to the Teensy.
