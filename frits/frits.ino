@@ -1,4 +1,3 @@
-#include <Bounce.h>
 #include <Audio.h>
 #include <Wire.h>
 #include <SPI.h>
@@ -9,6 +8,9 @@
 
 const int WAVETABLES = 7;
 const int MIXERS = WAVETABLES + 1;
+const float RELIEF = 0.1;
+float initialLdr[7];
+float pins[7] = { A0, A2, A3, A10, A11, A13, A12 };
 
 AudioSynthWavetable wavetable[WAVETABLES];
 AudioOutputI2S i2s1;
@@ -30,37 +32,36 @@ AudioControlSGTL5000 sgtl5000_1;
 
 void setup() {
   // start serial output
-  Serial.begin(9600); 
-  
+  Serial.begin(9600);
+
+  Serial.print("Setup LDR");
   // setup ldr
-  pinMode(A0, INPUT);
+  for (unsigned int i = 0; i < sizeof(pins) / sizeof(int); i++) {
+    pinMode(pins[i], INPUT);
+    initialLdr[i] = analogRead(pins[i]);  
+  }
+
+  Serial.println("Setup volume pot");
   pinMode(A1, INPUT);
-  pinMode(A2, INPUT);
-  pinMode(A3, INPUT);
-  pinMode(A4, INPUT);
-  pinMode(A5, INPUT);
-  pinMode(A6, INPUT);
 
-  // setup pot
-  pinMode(A9, INPUT);
-
-  // setup audio
-  AudioMemory(20);
+  Serial.println("Setup audio");
+  AudioMemory(120);
   sgtl5000_1.enable();
   sgtl5000_1.volume(1);
 
-  // set correct levels for mixers
+  Serial.println("Seting mixer gains");
   mixer[0].gain(0, 0.25);
-  mixer[0].gain(1, 0.25);  
+  mixer[0].gain(1, 0.25);
   mixer[0].gain(2, 0.25);
-  mixer[0].gain(3, 0.25);  
+  mixer[0].gain(3, 0.25);
   mixer[1].gain(0, 0.25);
-  mixer[1].gain(1, 0.25);  
+  mixer[1].gain(1, 0.25);
   mixer[1].gain(2, 0.25);
   mixer[1].gain(3, 0.25);
-  mixer[2].gain(0, 0.5);  
+  mixer[2].gain(0, 0.5);
   mixer[2].gain(1, 0.5);
 
+  Serial.println("Initialize wavetables");
   // C E G B D F A
   float notes[7] = { 261.63, 329.63, 392.00, 493.88, 587.33, 698.46, 880.00 };
 
@@ -69,31 +70,21 @@ void setup() {
     wavetable[i].playFrequency(notes[i]);
     wavetable[i].amplitude(0);
   }
+
+  Serial.println("Setup done");
 }
 
 void loop() {
-  // read inputs
-  int potReadings[1] = { analogRead(A9) };
-  int ldrReadings[7] = { analogRead(A6), analogRead(A5), analogRead(A4), analogRead(A3), analogRead(A2), analogRead(A1), analogRead(A0) };
+  int volumeReading = analogRead(A1);
+  float volume = map(volumeReading, 0, 1024, 0, 100);
 
   // set overall volume
-  sgtl5000_1.volume(potReadings[0] / 1024);
+  sgtl5000_1.volume(volume / 100);
 
   // determine amplitudes of wavetables
-  float amplitude1 = map(ldrReadings[0], 0, 1024, 100, 0);
-  float amplitude2 = map(ldrReadings[1], 0, 1024, 100, 0);
-  float amplitude3 = map(ldrReadings[2], 0, 1024, 100, 0);
-  float amplitude4 = map(ldrReadings[3], 0, 1024, 100, 0);
-  float amplitude5 = map(ldrReadings[4], 0, 1024, 100, 0);
-  float amplitude6 = map(ldrReadings[5], 0, 1024, 100, 0);
-  float amplitude7 = map(ldrReadings[6], 0, 1024, 100, 0);
-
-  // set individual volumes
-  wavetable[0].amplitude(amplitude1 / 100);
-  wavetable[1].amplitude(amplitude2 / 100);
-  wavetable[2].amplitude(amplitude3 / 100);
-  wavetable[3].amplitude(amplitude4 / 100);
-  wavetable[4].amplitude(amplitude5 / 100);
-  wavetable[5].amplitude(amplitude6 / 100);
-  wavetable[6].amplitude(amplitude7 / 100);
+  for (unsigned int i = 0; i < sizeof(pins) / sizeof(int); i++) {
+    int reading = analogRead(pins[i]);
+    float ampl = map(reading, 0, initialLdr[i] - (initialLdr[i] * RELIEF), 100, 0);
+    wavetable[i].amplitude(ampl / 100);
+  }
 }
